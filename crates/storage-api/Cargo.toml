@@ -1,0 +1,24 @@
+[package]
+name = "storage-api"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tokio = { workspace = true }
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+bytes = { workspace = true }
+mime_guess = { workspace = true }
+urlencoding = { workspace = true }
+storage-core = { path = "../storage-core" }
+storage-auth = { path = "../storage-auth" }
+utoipa = { workspace = true }
+utoipa-swagger-ui = { workspace = true }

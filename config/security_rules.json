@@ -1,0 +1,22 @@
+{
+  "rules": [
+    {
+      "path": "public/**",
+      "read": true,
+      "write": "request.auth != null",
+      "delete": "request.auth.admin == true"
+    },
+    {
+      "path": "private/**",
+      "read": "request.auth != null",
+      "write": "request.auth != null",
+      "delete": "request.auth.admin == true"
+    },
+    {
+      "path": "users/{userId}/**",
+      "read": "request.auth != null",
+      "write": "request.auth.uid == '{userId}'",
+      "delete": "request.auth.uid == '{userId}'"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+[package]
+name = "storage-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+mime_guess = { workspace = true }
+bytes = { workspace = true }
+sha2 = { workspace = true }
+md-5 = "0.10"
+hex = { workspace = true }
+tracing = { workspace = true }
+urlencoding = { workspace = true }
+tar = "0.4"
+flate2 = "1"
+walkdir = "2"

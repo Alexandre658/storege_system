@@ -1,0 +1,21 @@
+[package]
+name = "storage-server"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "storage-server"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+config = { workspace = true }
+dotenvy = { workspace = true }
+storage-core = { path = "../storage-core" }
+storage-auth = { path = "../storage-auth" }
+storage-api = { path = "../storage-api" }
+axum = { workspace = true }
