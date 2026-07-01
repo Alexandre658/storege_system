@@ -45,7 +45,7 @@ fn default_host() -> String {
 }
 
 fn default_port() -> u16 {
-    8080
+    8091
 }
 
 fn default_data_dir() -> PathBuf {
@@ -77,7 +77,7 @@ fn default_backup_retention() -> usize {
 }
 
 fn default_base_url() -> String {
-    "http://localhost:8080".to_string()
+    "http://localhost:8091".to_string()
 }
 
 impl ServerConfig {

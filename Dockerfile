@@ -13,5 +13,5 @@ COPY config ./config
 RUN mkdir -p /app/data
 ENV STORAGE_DATA_DIR=/app/data
 ENV STORAGE_DATABASE_URL=sqlite:///app/data/storage.db
-EXPOSE 8080
+EXPOSE 8091
 CMD ["storage-server"]

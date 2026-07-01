@@ -213,7 +213,7 @@ mod doc {
         description = "API de object storage compatível com Firebase Storage / Google Cloud Storage.",
         contact(name = "Moveme")
     ),
-    servers((url = "http://localhost:8080", description = "Local")),
+    servers((url = "http://localhost:8091", description = "Local")),
     modifiers(&SecurityAddon),
     tags(
         (name = "health", description = "Health check"),

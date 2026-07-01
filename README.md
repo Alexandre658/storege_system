@@ -40,14 +40,14 @@ storage/
 cargo run -p storage-server
 ```
 
-O servidor sobe em `http://localhost:8080`.
+O servidor sobe em `http://localhost:8091`.
 
 ### Swagger / OpenAPI
 
 Documentação interativa disponível em:
 
-- **UI:** http://localhost:8080/swagger-ui
-- **JSON:** http://localhost:8080/api-docs/openapi.json
+- **UI:** http://localhost:8091/swagger-ui
+- **JSON:** http://localhost:8091/api-docs/openapi.json
 
 Na UI, clique em **Authorize** e cole o Firebase ID Token (`Bearer` é adicionado automaticamente).
 
@@ -58,7 +58,7 @@ Copie `.env.example` para `.env` ou use `config/default.toml`:
 | Variável | Descrição | Padrão |
 |----------|-----------|--------|
 | `STORAGE_HOST` | Host de bind | `0.0.0.0` |
-| `STORAGE_PORT` | Porta | `8080` |
+| `STORAGE_PORT` | Porta | `8091` |
 | `STORAGE_DATA_DIR` | Diretório de dados | `./data` |
 | `STORAGE_FIREBASE_PROJECT_ID` | ID do projeto Firebase | *(obrigatório)* |
 | `STORAGE_MAX_UPLOAD_SIZE` | Tamanho máximo (bytes) | `104857600` (100 MB) |
@@ -72,16 +72,16 @@ Backup completo de `storage.db` + pasta `objects/` em arquivos `.tar.gz` em `./b
 
 ```bash
 # Criar (admin)
-curl -X POST http://localhost:8080/v1/backups \
+curl -X POST http://localhost:8091/v1/backups \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"label": "manual"}'
 
 # Listar
-curl http://localhost:8080/v1/backups -H "Authorization: Bearer $TOKEN"
+curl http://localhost:8091/v1/backups -H "Authorization: Bearer $TOKEN"
 
 # Restaurar (cria backup de segurança antes — reinicie o servidor depois)
-curl -X POST http://localhost:8080/v1/backups/{id}/restore \
+curl -X POST http://localhost:8091/v1/backups/{id}/restore \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -117,13 +117,13 @@ admin.auth().setCustomUserClaims(uid, { admin: true });
 TOKEN="<firebase-id-token>"
 
 # Criar bucket
-curl -X POST http://localhost:8080/v0/b \
+curl -X POST http://localhost:8091/v0/b \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name": "meu-bucket", "location": "us-central1"}'
 
 # Listar buckets
-curl http://localhost:8080/v0/b -H "Authorization: Bearer $TOKEN"
+curl http://localhost:8091/v0/b -H "Authorization: Bearer $TOKEN"
 ```
 
 ### Upload de objeto
@@ -132,7 +132,7 @@ curl http://localhost:8080/v0/b -H "Authorization: Bearer $TOKEN"
 TOKEN="<firebase-id-token>"
 
 # Upload simples (POST)
-curl -X POST "http://localhost:8080/v0/b/meu-bucket/o?name=public/foto.jpg" \
+curl -X POST "http://localhost:8091/v0/b/meu-bucket/o?name=public/foto.jpg" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: image/jpeg" \
   -H "x-goog-meta-author: joao" \
@@ -143,16 +143,16 @@ curl -X POST "http://localhost:8080/v0/b/meu-bucket/o?name=public/foto.jpg" \
 
 ```bash
 # Metadados
-curl "http://localhost:8080/v0/b/meu-bucket/o/public%2Ffoto.jpg"
+curl "http://localhost:8091/v0/b/meu-bucket/o/public%2Ffoto.jpg"
 
 # Conteúdo (alt=media)
-curl "http://localhost:8080/v0/b/meu-bucket/o/public%2Ffoto.jpg?alt=media" -o foto.jpg
+curl "http://localhost:8091/v0/b/meu-bucket/o/public%2Ffoto.jpg?alt=media" -o foto.jpg
 ```
 
 ### Listar objetos
 
 ```bash
-curl "http://localhost:8080/v0/b/meu-bucket/o?prefix=public/" \
+curl "http://localhost:8091/v0/b/meu-bucket/o?prefix=public/" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -160,13 +160,13 @@ curl "http://localhost:8080/v0/b/meu-bucket/o?prefix=public/" \
 
 ```bash
 # 1. Iniciar sessão
-curl -X PUT "http://localhost:8080/v0/b/meu-bucket/o?name=private/grande.zip" \
+curl -X PUT "http://localhost:8091/v0/b/meu-bucket/o?name=private/grande.zip" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/zip" \
   -H "x-upload-content-length: 50000000"
 
 # 2. Enviar chunks
-curl -X PUT "http://localhost:8080/v0/b/meu-bucket/o/upload?upload_id=SESSION_ID" \
+curl -X PUT "http://localhost:8091/v0/b/meu-bucket/o/upload?upload_id=SESSION_ID" \
   -H "Content-Type: application/octet-stream" \
   -H "Content-Range: bytes 0-1048575" \
   --data-binary @chunk1.bin
@@ -175,7 +175,7 @@ curl -X PUT "http://localhost:8080/v0/b/meu-bucket/o/upload?upload_id=SESSION_ID
 ### URL assinada
 
 ```bash
-curl -X POST http://localhost:8080/v1/signed-url \
+curl -X POST http://localhost:8091/v1/signed-url \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -189,7 +189,7 @@ curl -X POST http://localhost:8080/v1/signed-url \
 ### Deletar objeto
 
 ```bash
-curl -X DELETE "http://localhost:8080/v0/b/meu-bucket/o/public%2Ffoto.jpg" \
+curl -X DELETE "http://localhost:8091/v0/b/meu-bucket/o/public%2Ffoto.jpg" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
