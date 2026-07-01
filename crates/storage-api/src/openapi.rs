@@ -6,7 +6,7 @@ use crate::dto::{
     CreateBackupRequest, CreateBucketRequest, DownloadQuery, ErrorResponse,
     HealthResponse, ListObjectsQuery, ObjectListResponse, ObjectQuery, ObjectResponse,
     RestoreBackupResponse, SignedUrlRequest, SignedUrlResponse, UpdateMetadataRequest,
-    UploadChunkQuery,
+    UploadChunkQuery, UploadSessionResponse,
 };
 
 struct SecurityAddon;
@@ -32,10 +32,10 @@ impl Modify for SecurityAddon {
 mod doc {
     use super::{
         BackupInfoResponse, BackupListResponse, BucketListResponse, BucketResponse,
-        CreateBackupRequest, CreateBucketRequest, DownloadQuery, ErrorResponse,
-        HealthResponse, ListObjectsQuery, ObjectListResponse, ObjectQuery, ObjectResponse,
+        CreateBackupRequest, CreateBucketRequest, ErrorResponse,
+        HealthResponse, ListObjectsQuery, ObjectListResponse, ObjectResponse,
         RestoreBackupResponse, SignedUrlRequest, SignedUrlResponse, UpdateMetadataRequest,
-        UploadChunkQuery, UploadSessionResponse,
+        UploadSessionResponse,
     };
 
     #[utoipa::path(get, path = "/health", tag = "health",
