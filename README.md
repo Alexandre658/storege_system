@@ -51,6 +51,8 @@ Documentação interativa disponível em:
 
 Na UI, clique em **Authorize** e cole o Firebase ID Token (`Bearer` é adicionado automaticamente).
 
+Guia de integração para clientes: [docs/INTEGRATION.md](docs/INTEGRATION.md) (Flutter e Node.js).
+
 ### Variáveis de ambiente
 
 Copie `.env.example` para `.env` ou use `config/default.toml`:
