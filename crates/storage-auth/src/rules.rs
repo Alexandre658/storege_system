@@ -99,7 +99,7 @@ impl SecurityRulesEngine {
         let object_path = &request.object_path;
 
         for rule in &self.rules.rules {
-            if Self::path_matches(&rule.path, object_path) {
+            if let Some(path_params) = Self::path_matches(&rule.path, object_path) {
                 return Self::evaluate_condition(
                     match request.operation {
                         Operation::Read => &rule.read,
@@ -107,6 +107,7 @@ impl SecurityRulesEngine {
                         Operation::Delete => &rule.delete,
                     },
                     request,
+                    &path_params,
                 );
             }
         }
@@ -114,35 +115,79 @@ impl SecurityRulesEngine {
         false
     }
 
-    fn path_matches(pattern: &str, path: &str) -> bool {
+    /// Compara o padrão ao caminho do objeto, capturando parâmetros `{nome}`.
+    fn path_matches(pattern: &str, path: &str) -> Option<HashMap<String, String>> {
         if pattern == "**" || pattern == "*" {
-            return true;
+            return Some(HashMap::new());
         }
 
-        if pattern.ends_with("/**") {
-            let prefix = &pattern[..pattern.len() - 3];
-            return path.starts_with(prefix);
+        let (pattern_base, allow_rest) = if let Some(base) = pattern.strip_suffix("/**") {
+            (base, true)
+        } else {
+            (pattern, false)
+        };
+
+        Self::match_segments(pattern_base, path, allow_rest)
+    }
+
+    fn match_segments(
+        pattern: &str,
+        path: &str,
+        allow_rest: bool,
+    ) -> Option<HashMap<String, String>> {
+        let pattern_parts: Vec<&str> = pattern.split('/').filter(|s| !s.is_empty()).collect();
+        let path_parts: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+
+        if allow_rest {
+            if path_parts.len() < pattern_parts.len() {
+                return None;
+            }
+        } else if pattern_parts.len() != path_parts.len() {
+            return None;
         }
 
-        if pattern.contains('*') {
-            let parts: Vec<&str> = pattern.split('*').collect();
-            if parts.len() == 2 {
-                return path.starts_with(parts[0]) && path.ends_with(parts[1]);
+        let mut params = HashMap::new();
+
+        for (i, pat) in pattern_parts.iter().enumerate() {
+            let seg = path_parts.get(i)?;
+
+            if let Some(key) = pat.strip_prefix('{').and_then(|s| s.strip_suffix('}')) {
+                params.insert(key.to_string(), (*seg).to_string());
+            } else if *pat != *seg {
+                return None;
             }
         }
 
-        pattern == path
+        Some(params)
     }
 
-    fn evaluate_condition(condition: &RuleCondition, request: &AccessRequest) -> bool {
+    fn evaluate_condition(
+        condition: &RuleCondition,
+        request: &AccessRequest,
+        path_params: &HashMap<String, String>,
+    ) -> bool {
         match condition {
             RuleCondition::Bool(b) => *b,
-            RuleCondition::Expression(expr) => Self::evaluate_expression(expr, request),
+            RuleCondition::Expression(expr) => {
+                Self::evaluate_expression(expr, request, path_params)
+            }
         }
     }
 
-    fn evaluate_expression(expr: &str, request: &AccessRequest) -> bool {
-        let expr = expr.trim();
+    fn substitute_params(expr: &str, path_params: &HashMap<String, String>) -> String {
+        let mut result = expr.to_string();
+        for (key, value) in path_params {
+            result = result.replace(&format!("{{{key}}}"), value);
+        }
+        result
+    }
+
+    fn evaluate_expression(
+        expr: &str,
+        request: &AccessRequest,
+        path_params: &HashMap<String, String>,
+    ) -> bool {
+        let expr = Self::substitute_params(expr.trim(), path_params);
 
         if expr == "request.auth != null" {
             return request.claims.is_some();
@@ -156,13 +201,14 @@ impl SecurityRulesEngine {
                 .unwrap_or(false);
         }
 
-        if expr.starts_with("request.auth.uid == '") && expr.ends_with('\'') {
-            let uid = &expr[20..expr.len() - 1];
-            return request
-                .claims
-                .as_ref()
-                .map(|c| c.uid == uid)
-                .unwrap_or(false);
+        if let Some(rest) = expr.strip_prefix("request.auth.uid == '") {
+            if let Some(uid) = rest.strip_suffix('\'') {
+                return request
+                    .claims
+                    .as_ref()
+                    .map(|c| c.uid == uid)
+                    .unwrap_or(false);
+            }
         }
 
         if expr.contains("resource.metadata") {
@@ -190,11 +236,52 @@ impl SecurityRulesEngine {
 mod tests {
     use super::*;
 
+    fn engine_from_config() -> SecurityRulesEngine {
+        SecurityRulesEngine::from_json(include_str!(
+            "../../../config/security_rules.json"
+        ))
+        .expect("security_rules.json válido")
+    }
+
     #[test]
-    fn test_path_matching() {
-        assert!(SecurityRulesEngine::path_matches("public/**", "public/images/photo.jpg"));
-        assert!(SecurityRulesEngine::path_matches("public/**", "public/file.txt"));
-        assert!(!SecurityRulesEngine::path_matches("public/**", "private/file.txt"));
+    fn test_path_matching_public() {
+        assert!(SecurityRulesEngine::path_matches("public/**", "public/images/photo.jpg").is_some());
+        assert!(SecurityRulesEngine::path_matches("public/**", "public/file.txt").is_some());
+        assert!(SecurityRulesEngine::path_matches("public/**", "private/file.txt").is_none());
+    }
+
+    #[test]
+    fn test_path_matching_users_wildcard() {
+        let params =
+            SecurityRulesEngine::path_matches("users/{userId}/**", "users/abc123/avatar.jpg")
+                .expect("deve casar");
+        assert_eq!(params.get("userId").map(String::as_str), Some("abc123"));
+    }
+
+    #[test]
+    fn test_users_upload_owner_allowed() {
+        let engine = engine_from_config();
+        let req = AccessRequest {
+            operation: Operation::Write,
+            bucket: "b".to_string(),
+            object_path: "users/user-1/photo.jpg".to_string(),
+            claims: Some(Claims::from_firebase("user-1", None, false)),
+            custom_metadata: HashMap::new(),
+        };
+        assert!(engine.evaluate(&req));
+    }
+
+    #[test]
+    fn test_users_upload_other_denied() {
+        let engine = engine_from_config();
+        let req = AccessRequest {
+            operation: Operation::Write,
+            bucket: "b".to_string(),
+            object_path: "users/other-user/photo.jpg".to_string(),
+            claims: Some(Claims::from_firebase("user-1", None, false)),
+            custom_metadata: HashMap::new(),
+        };
+        assert!(!engine.evaluate(&req));
     }
 
     #[test]

@@ -118,7 +118,7 @@ pub async fn upload_object(
     headers: HeaderMap,
     body: Bytes,
 ) -> ApiResult<Json<ObjectResponse>> {
-    let object_path = query.name;
+    let object_path = storage_auth::normalize_object_path(&query.name, &claims);
     check_access(&state, Operation::Write, &bucket, &object_path, &claims, HashMap::new())?;
 
     if body.len() > state.max_upload_size {
@@ -303,7 +303,7 @@ pub async fn initiate_resumable_upload(
     Query(query): Query<ObjectQuery>,
     headers: HeaderMap,
 ) -> ApiResult<(StatusCode, HeaderMap, Json<UploadSessionResponse>)> {
-    let object_path = query.name;
+    let object_path = storage_auth::normalize_object_path(&query.name, &claims);
     check_access(&state, Operation::Write, &bucket, &object_path, &claims, HashMap::new())?;
 
     let content_type = headers

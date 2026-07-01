@@ -24,6 +24,27 @@ Organize os ficheiros por prefixo:
 | `private/**` | Autenticado | Autenticado | `private/doc.pdf` |
 | `users/{uid}/**` | Autenticado | Só o dono (`uid`) | `users/abc123/avatar.png` |
 
+O motor de regras interpreta `{uid}` (ou `{userId}` no JSON de config) como o segmento do path e compara com `request.auth.uid` do token Firebase.
+
+#### Normalização automática no upload
+
+No **upload** (`POST /v0/b/{bucket}/o?name=...`) e **upload resumível** (`PUT` com `name=...`), se o parâmetro `name` **não contiver `/`**, o servidor prefixa automaticamente:
+
+```
+foto.jpg  →  users/{uid-do-token}/foto.jpg
+```
+
+Isto só aplica quando o pedido traz `Authorization: Bearer <token>` válido. Sem token, `foto.jpg` sozinho não casa com nenhuma regra → **403**.
+
+| `name` no upload | Onde fica guardado | Escrita permitida? |
+|------------------|--------------------|--------------------|
+| `users/abc123/foto.jpg` | `users/abc123/foto.jpg` | Sim, se `token.uid == abc123` |
+| `foto.jpg` (com token) | `users/{token.uid}/foto.jpg` | Sim (dono do token) |
+| `public/foto.jpg` | `public/foto.jpg` | Sim (utilizador autenticado) |
+| `foto.jpg` (sem token) | — | Não → 403 |
+
+> **Download / delete / metadados** usam o path completo na URL (`/v0/b/{bucket}/o/{path}`). Use sempre o caminho final (ex.: `users/$uid/foto.jpg`), não apenas `foto.jpg`.
+
 ---
 
 ## Node.js
@@ -155,7 +176,7 @@ async function main() {
   const uid = auth.currentUser.uid;
   const bucket = 'meu-bucket';
 
-  // Upload para pasta do utilizador
+  // Upload para pasta do utilizador (recomendado — path explícito)
   const file = fs.readFileSync('./foto.jpg');
   const meta = await storage.upload(
     bucket,
@@ -165,6 +186,9 @@ async function main() {
     { author: 'joao' }
   );
   console.log('Upload OK:', meta);
+
+  // Alternativa: só o nome do ficheiro — servidor guarda em users/{uid}/foto.jpg
+  await storage.upload(bucket, 'foto.jpg', file, 'image/jpeg');
 
   // Listar ficheiros do utilizador
   const items = await storage.list(bucket, { prefix: `users/${uid}/` });
@@ -427,6 +451,7 @@ class StorageException implements Exception {
 
 ```dart
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'moveme_storage_client.dart';
 
@@ -437,24 +462,40 @@ class StorageService {
 
   static const bucket = 'meu-bucket';
 
-  Future<Map<String, dynamic>> uploadUserPhoto(File file) async {
+  /// Caminho canónico na pasta do utilizador (use no download/delete)
+  String userPath(String filename) {
     final uid = FirebaseAuth.instance.currentUser!.uid;
+    return 'users/$uid/$filename';
+  }
+
+  Future<Map<String, dynamic>> uploadUserPhoto(File file) async {
     final bytes = await file.readAsBytes();
 
+    // Opção A (recomendada): path explícito
     return _client.uploadBytes(
       bucket: bucket,
-      objectPath: 'users/$uid/avatar.jpg',
+      objectPath: userPath('avatar.jpg'),
       bytes: bytes,
       contentType: 'image/jpeg',
       metadata: {'source': 'flutter'},
     );
   }
 
+  /// Opção B: só o nome — upload vira users/{uid}/avatar.jpg no servidor
+  Future<Map<String, dynamic>> uploadUserPhotoShort(File file) async {
+    final bytes = await file.readAsBytes();
+    return _client.uploadBytes(
+      bucket: bucket,
+      objectPath: 'avatar.jpg',
+      bytes: bytes,
+      contentType: 'image/jpeg',
+    );
+  }
+
   Future<Uint8List> downloadUserPhoto() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
     return _client.download(
       bucket: bucket,
-      objectPath: 'users/$uid/avatar.jpg',
+      objectPath: userPath('avatar.jpg'),
     );
   }
 
@@ -477,12 +518,12 @@ Image.network(
 
 ### Flutter — upload de ficheiro grande (resumível)
 
-Para ficheiros > 10 MB, use upload resumível:
+Para ficheiros > 10 MB, use upload resumível. O parâmetro `name` segue as mesmas regras de normalização (`foto.jpg` → `users/{uid}/foto.jpg`).
 
 ```dart
 Future<void> resumableUpload({
   required String bucket,
-  required String objectPath,
+  required String objectPath, // ex.: userPath('video.mp4') ou 'video.mp4'
   required Uint8List fileBytes,
   required String contentType,
 }) async {
@@ -551,9 +592,20 @@ Future<void> resumableUpload({
 | Código | Significado | Solução |
 |--------|-------------|---------|
 | 401 | Token em falta ou inválido | Chamar `getIdToken()` após login Firebase |
-| 403 | Regra de segurança | Verificar prefixo (`public/`, `users/{uid}/`) |
+| 403 | Regra de segurança | Ver tabela abaixo |
 | 404 | Objeto/bucket não existe | Confirmar bucket e caminho |
 | 409 | Bucket já existe | Usar outro nome ou ignorar se já criado |
+
+### 403 — regras de segurança
+
+Mensagem típica: `{"message":"acesso negado pelas regras de segurança"}`.
+
+| Causa | Exemplo | Correção |
+|-------|---------|----------|
+| Path sem prefixo válido | `name=doc.pdf` sem token | Enviar `Authorization: Bearer …` ou usar `public/doc.pdf` |
+| Escrita na pasta de outro utilizador | Upload em `users/OUTRO_UID/foto.jpg` | Usar `users/${meuUid}/…` ou só `foto.jpg` com o token certo |
+| Leitura em `private/**` sem auth | GET sem header | Incluir token Firebase |
+| Path de download errado após upload curto | Upload `avatar.jpg`, download `avatar.jpg` | Download em `users/$uid/avatar.jpg` |
 
 ### Emulador Android
 
@@ -573,7 +625,8 @@ Use HTTPS e configure `STORAGE_BASE_URL` com o domínio real do servidor.
 
 - [ ] Firebase Auth configurado no app (mesmo projeto `moveme-1554316037072`)
 - [ ] Bucket criado (admin): `POST /v0/b`
-- [ ] Uploads usam caminhos conforme regras (`users/{uid}/...`)
+- [ ] Uploads em `users/{uid}/…` (explícito) ou só o nome do ficheiro com token (normalização automática)
+- [ ] Download/delete usam o path completo (`users/{uid}/ficheiro.ext`)
 - [ ] Token renovado (`getIdToken(true)` se expirado)
 - [ ] Imagens públicas em `public/` para `Image.network` sem auth
 - [ ] Ficheiros grandes com upload resumível
