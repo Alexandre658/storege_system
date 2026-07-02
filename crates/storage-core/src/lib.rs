@@ -13,5 +13,5 @@ pub use bucket::Bucket;
 pub use error::{StorageError, StorageResult};
 pub use metadata::ObjectMetadata;
 pub use object::StoredObject;
-pub use store::StorageStore;
+pub use store::{StorageStore, StoreConfig};
 pub use upload::{ResumableUpload, UploadSession};

@@ -38,6 +38,10 @@ pub struct ServerConfig {
     pub backup_retention_count: usize,
     #[serde(default)]
     pub backup_auto_interval_hours: u64,
+    #[serde(default = "default_auto_create_buckets")]
+    pub auto_create_buckets: bool,
+    #[serde(default = "default_bucket_location")]
+    pub default_bucket_location: String,
 }
 
 fn default_host() -> String {
@@ -78,6 +82,14 @@ fn default_backup_retention() -> usize {
 
 fn default_base_url() -> String {
     "http://localhost:8091".to_string()
+}
+
+fn default_auto_create_buckets() -> bool {
+    true
+}
+
+fn default_bucket_location() -> String {
+    "us-central1".to_string()
 }
 
 impl ServerConfig {

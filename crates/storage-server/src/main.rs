@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use storage_api::{create_router, AppState};
 use storage_auth::{FirebaseTokenVerifier, SecurityRulesEngine, SignedUrlGenerator};
-use storage_core::{BackupService, LocalFilesystemBackend, StorageStore};
+use storage_core::{BackupService, LocalFilesystemBackend, StorageStore, StoreConfig};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -33,7 +33,30 @@ async fn main() -> anyhow::Result<()> {
         config.data_dir.join("objects"),
     )?);
 
-    let store = Arc::new(StorageStore::new(&config.database_url, backend).await?);
+    let store = Arc::new(
+        StorageStore::new(
+            &config.database_url,
+            backend,
+            StoreConfig {
+                auto_create_buckets: config.auto_create_buckets,
+                default_bucket_location: config.default_bucket_location.clone(),
+            },
+        )
+        .await?,
+    );
+
+    if config.auto_create_buckets {
+        store
+            .ensure_firebase_buckets(
+                &config.firebase_project_id,
+                config.firebase_storage_bucket.as_deref(),
+            )
+            .await?;
+        info!(
+            "Buckets Firebase garantidos (auto_create_buckets=true, project={})",
+            config.firebase_project_id
+        );
+    }
 
     let backup = Arc::new(BackupService::new(
         config.data_dir.clone(),

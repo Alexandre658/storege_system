@@ -15,20 +15,44 @@ use crate::metadata::{ObjectMetadata, ObjectRecord, ObjectRecordRow};
 use crate::object::StoredObject;
 use crate::upload::{ResumableUpload, UploadSession, UploadSessionRow};
 
+#[derive(Debug, Clone)]
+pub struct StoreConfig {
+    pub auto_create_buckets: bool,
+    pub default_bucket_location: String,
+}
+
+impl Default for StoreConfig {
+    fn default() -> Self {
+        Self {
+            auto_create_buckets: true,
+            default_bucket_location: "us-central1".to_string(),
+        }
+    }
+}
+
 pub struct StorageStore {
     pool: SqlitePool,
     backend: Arc<dyn StorageBackend>,
+    config: StoreConfig,
 }
 
 impl StorageStore {
-    pub async fn new(database_url: &str, backend: Arc<dyn StorageBackend>) -> StorageResult<Self> {
+    pub async fn new(
+        database_url: &str,
+        backend: Arc<dyn StorageBackend>,
+        config: StoreConfig,
+    ) -> StorageResult<Self> {
         let options: SqliteConnectOptions = database_url.parse()?;
         let pool = SqlitePoolOptions::new()
             .max_connections(10)
             .connect_with(options.create_if_missing(true))
             .await?;
 
-        let store = Self { pool, backend };
+        let store = Self {
+            pool,
+            backend,
+            config,
+        };
         store.migrate().await?;
         Ok(store)
     }
@@ -155,6 +179,58 @@ impl StorageStore {
         })
     }
 
+    /// Cria o bucket se ainda não existir (idempotente).
+    pub async fn ensure_bucket(&self, name: &str) -> StorageResult<Bucket> {
+        match self.get_bucket(name).await {
+            Ok(bucket) => Ok(bucket),
+            Err(StorageError::BucketNotFound(_)) => match self
+                .create_bucket(name, &self.config.default_bucket_location)
+                .await
+            {
+                Ok(bucket) => Ok(bucket),
+                Err(StorageError::AlreadyExists(_)) => self.get_bucket(name).await,
+                Err(e) => Err(e),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    async fn resolve_bucket(&self, name: &str) -> StorageResult<Bucket> {
+        if self.config.auto_create_buckets {
+            self.ensure_bucket(name).await
+        } else {
+            self.get_bucket(name).await
+        }
+    }
+
+    /// Garante buckets padrão do Firebase (startup).
+    pub async fn ensure_firebase_buckets(
+        &self,
+        project_id: &str,
+        storage_bucket: Option<&str>,
+    ) -> StorageResult<()> {
+        if !self.config.auto_create_buckets {
+            return Ok(());
+        }
+
+        let mut names = Vec::new();
+        if let Some(bucket) = storage_bucket.filter(|s| !s.is_empty()) {
+            names.push(bucket.to_string());
+        }
+        names.push(format!("{project_id}.firebasestorage.app"));
+        names.push(format!("{project_id}.appspot.com"));
+        names.push(project_id.to_string());
+
+        names.sort();
+        names.dedup();
+
+        for name in names {
+            self.ensure_bucket(&name).await?;
+        }
+
+        Ok(())
+    }
+
     pub async fn list_buckets(&self) -> StorageResult<Vec<Bucket>> {
         let rows = sqlx::query(
             r#"
@@ -220,7 +296,7 @@ impl StorageStore {
         content_type: Option<&str>,
         custom_metadata: HashMap<String, String>,
     ) -> StorageResult<ObjectMetadata> {
-        let bucket = self.get_bucket(bucket_name).await?;
+        let bucket = self.resolve_bucket(bucket_name).await?;
         let now = Utc::now();
 
         let content_type = content_type
@@ -530,7 +606,7 @@ impl StorageStore {
         base_url: &str,
         ttl_hours: i64,
     ) -> StorageResult<ResumableUpload> {
-        self.get_bucket(bucket_name).await?;
+        self.resolve_bucket(bucket_name).await?;
 
         let content_type = content_type
             .map(|s| s.to_string())

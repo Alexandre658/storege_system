@@ -10,3 +10,6 @@ security_rules_path = "./config/security_rules.json"
 backup_dir = "./backups"
 backup_retention_count = 10
 backup_auto_interval_hours = 0
+auto_create_buckets = true
+default_bucket_location = "us-central1"
+firebase_storage_bucket = "moveme-1554316037072.firebasestorage.app"

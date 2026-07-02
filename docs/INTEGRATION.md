@@ -624,7 +624,7 @@ Use HTTPS e configure `STORAGE_BASE_URL` com o domínio real do servidor.
 ## Checklist de implementação
 
 - [ ] Firebase Auth configurado no app (mesmo projeto `moveme-1554316037072`)
-- [ ] Bucket criado (admin): `POST /v0/b`
+- [ ] Bucket: use `Firebase.app().options.storageBucket` — com `auto_create_buckets=true` (padrão) o servidor cria automaticamente
 - [ ] Uploads em `users/{uid}/…` (explícito) ou só o nome do ficheiro com token (normalização automática)
 - [ ] Download/delete usam o path completo (`users/{uid}/ficheiro.ext`)
 - [ ] Token renovado (`getIdToken(true)` se expirado)

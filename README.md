@@ -67,6 +67,9 @@ Copie `.env.example` para `.env` ou use `config/default.toml`:
 | `STORAGE_BACKUP_DIR` | Pasta dos backups | `./backups` |
 | `STORAGE_BACKUP_RETENTION_COUNT` | Backups mantidos | `10` |
 | `STORAGE_BACKUP_AUTO_INTERVAL_HOURS` | Backup automático (0 = off) | `0` |
+| `STORAGE_AUTO_CREATE_BUCKETS` | Criar buckets automaticamente no startup e no primeiro upload | `true` |
+| `STORAGE_DEFAULT_BUCKET_LOCATION` | Região dos buckets auto-criados | `us-central1` |
+| `FIREBASE_STORAGE_BUCKET` | Bucket padrão Firebase (criado no startup se auto_create ativo) | — |
 
 ## Backup
 
