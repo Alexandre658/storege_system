@@ -13,6 +13,12 @@
       "delete": "request.auth.admin == true"
     },
     {
+      "path": "users/{userId}/vehicles/**",
+      "read": true,
+      "write": "request.auth.uid == '{userId}'",
+      "delete": "request.auth.uid == '{userId}'"
+    },
+    {
       "path": "users/{userId}/**",
       "read": "request.auth != null",
       "write": "request.auth.uid == '{userId}'",

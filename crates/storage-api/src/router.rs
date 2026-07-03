@@ -16,8 +16,6 @@ use crate::openapi::ApiDoc;
 use crate::state::AppState;
 
 pub fn create_router(state: AppState) -> Router {
-    let max_upload = state.max_upload_size;
-
     let api_routes = Router::new()
         .route("/health", get(handlers::health))
         // Buckets (Firebase/GCS compatible)
@@ -55,9 +53,15 @@ pub fn create_router(state: AppState) -> Router {
         .route("/v1/backups/{id}", get(handlers::get_backup))
         .route("/v1/backups/{id}", delete(handlers::delete_backup))
         .route("/v1/backups/{id}/restore", post(handlers::restore_backup))
-        .layer(middleware::from_fn_with_state(state.clone(), extract_auth))
-        .layer(RequestBodyLimitLayer::new(max_upload))
-        .with_state(state);
+        .layer(middleware::from_fn_with_state(state.clone(), extract_auth));
+
+    let api_routes = if let Some(max_upload) = state.max_upload_size.filter(|&n| n > 0) {
+        api_routes.layer(RequestBodyLimitLayer::new(max_upload))
+    } else {
+        api_routes
+    };
+
+    let api_routes = api_routes.with_state(state);
 
     Router::new()
         .merge(api_routes)

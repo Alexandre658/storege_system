@@ -15,8 +15,9 @@ pub struct ServerConfig {
     pub firebase_project_id: String,
     #[serde(default = "default_signed_url_secret")]
     pub signed_url_secret: String,
-    #[serde(default = "default_max_upload_size")]
-    pub max_upload_size: usize,
+    /// Tamanho máximo de upload em bytes. `None` ou `0` = sem limite.
+    #[serde(default)]
+    pub max_upload_size: Option<usize>,
     #[serde(default = "default_base_url")]
     pub base_url: String,
     #[serde(default)]
@@ -66,10 +67,6 @@ fn default_firebase_project_id() -> String {
 
 fn default_signed_url_secret() -> String {
     "change-me-signed-url-secret".to_string()
-}
-
-fn default_max_upload_size() -> usize {
-    100 * 1024 * 1024 // 100 MB
 }
 
 fn default_backup_dir() -> PathBuf {

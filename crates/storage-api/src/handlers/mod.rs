@@ -121,11 +121,12 @@ pub async fn upload_object(
     let object_path = storage_auth::normalize_object_path(&query.name, &claims);
     check_access(&state, Operation::Write, &bucket, &object_path, &claims, HashMap::new())?;
 
-    if body.len() > state.max_upload_size {
-        return Err(ApiError::bad_request(format!(
-            "arquivo excede o tamanho máximo de {} bytes",
-            state.max_upload_size
-        )));
+    if let Some(max) = state.max_upload_size {
+        if body.len() > max {
+            return Err(ApiError::bad_request(format!(
+                "arquivo excede o tamanho máximo de {max} bytes"
+            )));
+        }
     }
 
     let content_type = headers

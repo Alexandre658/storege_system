@@ -63,7 +63,7 @@ Copie `.env.example` para `.env` ou use `config/default.toml`:
 | `STORAGE_PORT` | Porta | `8091` |
 | `STORAGE_DATA_DIR` | Diretório de dados | `./data` |
 | `STORAGE_FIREBASE_PROJECT_ID` | ID do projeto Firebase | *(obrigatório)* |
-| `STORAGE_MAX_UPLOAD_SIZE` | Tamanho máximo (bytes) | `104857600` (100 MB) |
+| `STORAGE_MAX_UPLOAD_SIZE` | Tamanho máximo (bytes); omitir ou `0` = sem limite | sem limite |
 | `STORAGE_BACKUP_DIR` | Pasta dos backups | `./backups` |
 | `STORAGE_BACKUP_RETENTION_COUNT` | Backups mantidos | `10` |
 | `STORAGE_BACKUP_AUTO_INTERVAL_HOURS` | Backup automático (0 = off) | `0` |

@@ -4,7 +4,7 @@ data_dir = "./data"
 database_url = "sqlite://./data/storage.db"
 firebase_project_id = "moveme-1554316037072"
 signed_url_secret = "dev-signed-url-secret"
-max_upload_size = 104857600
+# max_upload_size = 0  # 0 ou omitido = sem limite; ex.: 104857600 = 100 MB
 base_url = "http://localhost:8091"
 security_rules_path = "./config/security_rules.json"
 backup_dir = "./backups"

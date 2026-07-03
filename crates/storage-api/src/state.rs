@@ -11,7 +11,8 @@ pub struct AppState {
     pub signed_url: Arc<SignedUrlGenerator>,
     pub rules: Arc<SecurityRulesEngine>,
     pub base_url: String,
-    pub max_upload_size: usize,
+    /// `None` = sem limite de tamanho no upload.
+    pub max_upload_size: Option<usize>,
 }
 
 impl AppState {
@@ -22,7 +23,7 @@ impl AppState {
         signed_url: Arc<SignedUrlGenerator>,
         rules: Arc<SecurityRulesEngine>,
         base_url: String,
-        max_upload_size: usize,
+        max_upload_size: Option<usize>,
     ) -> Self {
         Self {
             store,
